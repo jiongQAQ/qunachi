@@ -1,0 +1,38 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: qunachi-app
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - AMAP_WEB_SERVICE_KEY=${AMAP_WEB_SERVICE_KEY}
+      - PORT=3000
+    ports:
+      - "3000"
+    volumes:
+      - ./logs:/app/logs
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: qunachi-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./deploy/certs:/etc/nginx/certs:ro
+    depends_on:
+      - app
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
