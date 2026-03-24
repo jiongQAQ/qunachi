@@ -1,32 +1,26 @@
-FROM oven/bun:1 AS base
+FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Install dependencies
-FROM base AS deps
-COPY package.json bun.lockb .
-RUN bun install --frozen-lockfile
+COPY package*.json ./
+RUN npm ci
 
-# Build
-FROM base AS builder
-COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN bun run build
+RUN npm run build
 
-# Production
-FROM base AS runner
+FROM node:20-alpine AS runner
 WORKDIR /app
+
 ENV NODE_ENV=production
 
-RUN apt-get update && apt-get install -y nginx && rm -rf /var/lib/apt/lists/*
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
 
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Nginx config for Next.js
-RUN mkdir -p /var/run/nginx && \
-    echo 'server { listen 3000; server_name localhost; location / { proxy_pass http://localhost:3000; proxy_set_header Host $host; proxy_set_header X-Real-IP $remote_addr; } }' > /etc/nginx/conf.d/default.conf
+USER nextjs
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "nginx && node server.js"]
+CMD ["node", "server.js"]

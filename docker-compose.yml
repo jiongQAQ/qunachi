@@ -1,0 +1,28 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - AMAP_WEB_SERVICE_KEY=${AMAP_WEB_SERVICE_KEY}
+    container_name: qunachi-app
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - AMAP_WEB_SERVICE_KEY=${AMAP_WEB_SERVICE_KEY}
+      - PORT=3000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./logs:/app/logs
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+    networks:
+      - qunachi-network
+
+networks:
+  qunachi-network:
+    driver: bridge
